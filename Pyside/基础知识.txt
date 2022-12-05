@@ -1,0 +1,475 @@
+Qt 的主要模块QtWidgets是QtGui和QtCore。
+from PySide6.QtWidgets import QApplication, QWidget
+创建一个 的实例QApplication
+app = QApplication(sys.argv)
+如果你知道你不会使用命令行参数来控制 Qt，你可以传入一个空列表，例如
+app = QApplication([])
+QWidget接下来我们使用变量 name创建一个实例window。
+window = QWidget()
+window.show()
+默认情况下，没有父级的 小部件是不可见的。因此，在创建window对象后，我们必须始终调用.show()以使其可见。您可以删除.show()并运行该应用程序，但无法退出它！
+最后，我们调用app.exec_()启动事件循环
+在 Qt 中，大小是使用QSize对象定义的,还.setFixedSize()可以调用.setMinimumSize()和.setMaximumSize()分别设置最小和最大尺寸
+
+QPushButton信号
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("My App")
+
+        button = QPushButton("Press Me!")
+        button.setCheckable(True)
+        button.clicked.connect(self.the_button_was_clicked)
+        button.clicked.connect(self.the_button_was_toggled)
+
+        self.setCentralWidget(button)
+
+    def the_button_was_clicked(self):
+        print("Clicked!")
+
+    def the_button_was_toggled(self, checked):
+        print("Checked?", checked)
+运行结果
+Clicked!
+Checked? True
+Clicked!
+Checked? False
+Clicked!
+Checked? True
+Clicked!
+Checked? False
+Clicked!
+Checked? True
+
+通过.setEnabled(False)禁用按钮
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("My App")
+
+        self.button = QPushButton("Press Me!")
+        self.button.clicked.connect(self.the_button_was_clicked)
+
+        self.setCentralWidget(self.button)
+
+    def the_button_was_clicked(self):
+        self.button.setText("You already clicked me.")
+        self.button.setEnabled(True)
+
+        # Also change the window title.
+        self.setWindowTitle("My Oneshot App")
+
+
+案例一：首先，我们设置了一个窗口标题列表——我们将使用 Python 内置的random.choice(). 我们将自定义插槽方法the_window_title_changed与窗口的.windowTitleChanged信号挂钩。
+当我们单击按钮时，窗口标题将随机更改。如果新窗口标题等于“出现问题”，则该按钮将被禁用。
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
+
+import sys
+from random import choice
+
+window_titles = [
+    'My App',
+    'My App',
+    'Still My App',
+    'Still My App',
+    'What on earth',
+    'What on earth',
+    'This is surprising',
+    'This is surprising',
+    'Something went wrong'
+]
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.n_times_clicked = 0
+
+        self.setWindowTitle("My App")
+
+        self.button = QPushButton("Press Me!")
+        self.button.clicked.connect(self.the_button_was_clicked)
+
+        self.windowTitleChanged.connect(self.the_window_title_changed)
+
+        self.setCentralWidget(self.button)
+
+    def the_button_was_clicked(self):
+        print("Clicked.")
+        new_window_title = choice(window_titles)
+        print("Setting title:  %s" % new_window_title)
+        self.setWindowTitle(new_window_title)
+
+    def the_window_title_changed(self, window_title):
+        print("Window title changed: %s" % window_title)
+
+        if window_title == 'Something went wrong':
+            self.button.setDisabled(True)
+
+
+app = QApplication(sys.argv)
+
+window = MainWindow()
+window.show()
+
+app.exec_()
+
+案例二将一个QLineEdit小部件和一个添加QLabel到窗口中。
+在\\__init__窗口中，我们将行编辑.textChanged信号连接.setText到QLabel. 现在，只要文本中的文本发生变化，QLineEdit就会QLabel将该文本接收到它的.setText方法中。
+import sys
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("My App")
+
+        self.label = QLabel()
+
+        self.input = QLineEdit()
+        self.input.textChanged.connect(self.label.setText)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.input)
+        layout.addWidget(self.label)
+
+        container = QWidget()
+        container.setLayout(layout)
+
+        self.setCentralWidget(container)
+
+
+app = QApplication(sys.argv)
+
+window = MainWindow()
+window.show()
+
+app.exec_()
+
+小部件接收的主要事件之一是QMouseEvent. QMouseEvent 事件是为每个鼠标移动和按钮单击小部件创建的。以下事件处理程序可用于处理鼠标事件——
+事件处理程序	活动类型已移动
+mouseMoveEvent	鼠标移动
+mousePressEvent	按下鼠标按钮
+mouseReleaseEvent	鼠标按钮松开
+mouseDoubleClickEvent	检测到双击
+例如，单击一个小部件将导致QMouseEvent发送到该.mousePressEvent小部件上的事件处理程序。此处理程序可以使用事件对象来查找有关发生的事情的信息，例如触发事件的原因以及发生的具体位置。
+您可以通过子类化和覆盖类上的处理程序方法来拦截事件。您可以选择过滤、修改或忽略事件，通过调用父类函数将它们传递给事件的正常处理程序super()。这些可以添加到您的主窗口类中，如下所示。在每种情况下e都会收到传入的事件。
+PYTHON
+import sys
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QTextEdit
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.label = QLabel("Click in this window")
+        self.setCentralWidget(self.label)
+
+    def mouseMoveEvent(self, e):
+        self.label.setText("mouseMoveEvent")
+
+    def mousePressEvent(self, e):
+        self.label.setText("mousePressEvent")
+
+    def mouseReleaseEvent(self, e):
+        self.label.setText("mouseReleaseEvent")
+
+    def mouseDoubleClickEvent(self, e):
+        self.label.setText("mouseDoubleClickEvent")
+
+
+app = QApplication(sys.argv)
+
+window = MainWindow()
+window.show()
+
+app.exec_()
+
+
+鼠标事件
+Qt 中的所有鼠标事件都使用QMouseEvent对象进行跟踪，有关事件的信息可从以下事件方法中读取。
+
+方法	退货
+.button()	触发此事件的特定按钮
+.buttons()	所有鼠标按钮的状态（或标志）
+.globalPos()	应用程序全球定位QPoint
+.globalX()	应用程序-全局水平X位置
+.globalY()	应用-全局垂直Y位置
+.pos()	小部件相对位置为QPoint 整数
+.posF()	小部件相对位置作为QPointF 浮点数
+
+
+
+上下文菜单
+上下文菜单是小的上下文相关菜单，通常在右键单击窗口时出现。Qt 支持生成这些菜单，并且小部件具有用于触发它们的特定事件。在下面的示例中，我们将拦截.contextMenuEventa QMainWindow。每当即将显示上下文菜单时都会触发此事件，并传递一个eventtype的值QContextMenuEvent。
+要拦截事件，我们只需用我们的同名新方法覆盖对象方法。所以在这种情况下，我们可以在我们的MainWindow子类上创建一个带有名称的方法contextMenuEvent，它将接收这种类型的所有事件。
+import sys
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QMenu
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+    def contextMenuEvent(self, e):
+        context = QMenu(self)
+        context.addAction(QAction("test 1", self))
+        context.addAction(QAction("test 2", self))
+        context.addAction(QAction("test 3", self))
+        context.exec_(e.globalPos())
+
+
+app = QApplication(sys.argv)
+
+window = MainWindow()
+window.show()
+
+app.exec_()
+
+
+小部件	它能做什么
+QCheckbox	一个复选框
+QComboBox	一个下拉列表框
+QDateEdit	用于编辑日期和日期时间
+QDateTimeEdit	用于编辑日期和日期时间
+QDial	可旋转表盘
+QDoubleSpinbox	浮点数微调器
+QFontComboBox	字体列表
+QLCDNumber	一个相当丑陋的液晶显示器
+QLabel	只是一个标签，不是交互的
+QLineEdit	输入一行文字
+QProgressBar	进度条
+QPushButton	一个按钮
+QRadioButton	一个切换集，只有一个活动项目
+QSlider	一个滑块
+QSpinBox	整数微调器
+QTimeEdit	对于编辑时间
+
+
+QLabel
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        super(MainWindow, self).__init__()
+
+        self.setWindowTitle("My App")
+
+        widget = QLabel("Hello")
+        font = widget.font()
+        font.setPointSize(30)
+        widget.setFont(font)
+        widget.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+
+        self.setCentralWidget(widget)
+对齐是通过使用Qt.命名空间中的标志来指定的。可用于水平对齐的标志是：
+
+旗帜	行为
+Qt.AlignLeft	与左边缘对齐。
+Qt.AlignRight	与右边缘对齐。
+Qt.AlignHCenter	在可用空间中水平居中。
+Qt.AlignJustify	对齐可用空间中的文本。
+
+可用于垂直对齐的标志是：
+
+旗帜	行为
+Qt.AlignTop	与顶部对齐。
+Qt.AlignBottom	与底部对齐。
+Qt.AlignVCenter	在可用空间中垂直居中。
+
+还可以QLabel使用.setPixmap(). 这接受一个像素图，您可以通过将图像文件名传递给QPixmap. 在本书提供的示例文件中，您可以找到一个otje.jpg可以在窗口中显示的文件，如下所示：
+widget.setPixmap(QPixmap('otje.jpg'))
+默认情况下，图像会缩放，同时保持其纵横比。如果您希望它拉伸和缩放以完全适合窗口，您可以.setScaledContents(True)在QLabel.
+widget.setScaledContents(True)
+
+
+QCheckBox
+下一个要查看的小部件，QCheckBox()顾名思义，它向用户显示了一个可复选框。然而，与所有 Qt 小部件一样，有许多可配置的选项来更改小部件的行为。
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        super(MainWindow, self).__init__()
+
+        self.setWindowTitle("My App")
+
+        widget = QCheckBox()
+        widget.setCheckState(Qt.Checked)
+
+        # For tristate: widget.setCheckState(Qt.PartiallyChecked)
+        # Or: widget.setTriState(True)
+        widget.stateChanged.connect(self.show_state)
+
+        self.setCentralWidget(widget)
+
+
+    def show_state(self, s):
+        print(s == Qt.Checked)
+        print(s)
+
+setChecked您可以使用或以编程方式设置复选框状态.setCheckState。前者接受True或False分别代表选中或未选中。但是，您还可以使用命名空间标志.setCheckState指定特定的检查状态：Qt.
+
+旗帜	行为
+Qt.Unchecked	项目未选中
+Qt.PartiallyChecked	项目被部分检查
+Qt.Checked	项目已检查
+支持部分选中 ( Qt.PartiallyChecked) 状态的复选框通常称为“三态”，即既不打开也不关闭。此状态下的复选框通常显示为灰色复选框，并且通常用于分层复选框排列，其中子项链接到父复选框。
+如果将值设置Qt.PartiallyChecked为复选框将变为三态。您还可以将复选框设置为三态，而不使用将当前状态设置为部分选中.setTriState(True)
+您可能会注意到，当脚本运行时，当前状态编号显示为已int选中 = 2、未选中 =0和部分选中 = 1。您不需要记住这些值，例如Qt.Checked命名空间变量== 2。这是这些状态各自标志的值。这意味着您可以使用state == Qt.Checked.
+
+QComboBox
+这QComboBox是一个下拉列表，默认关闭，用箭头打开它。您可以从列表中选择单个项目，当前选定的项目在小部件上显示为标签。组合框适合从一长串选项中进行选择。
+您可以QComboBox通过将字符串列表传递给 来将项目添加到.addItems(). 项目将按提供的顺序添加
+
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        super(MainWindow, self).__init__()
+
+        self.setWindowTitle("My App")
+
+        widget = QComboBox()
+        widget.addItems(["One", "Two", "Three"])
+
+        # The default signal from currentIndexChanged sends the index
+        widget.currentIndexChanged.connect(self.index_changed)
+
+        # The same signal can send a text string
+        widget.currentTextChanged.connect(self.text_changed)
+
+        self.setCentralWidget(widget)
+
+
+    def index_changed(self, i): # i is an int
+        print(i)
+
+    def text_changed(self, s): # s is a str
+        print(s)
+
+该.currentIndexChanged信号在当前选中项更新时触发，默认传递列表中选中项的索引。还有一个.currentTextChanged信号提供当前选定项目的标签，这通常更有用。
+QComboBox也可以是可编辑的，允许用户输入当前不在列表中的值，或者将它们插入，或者简单地用作值。要使框可编辑：
+widget.setEditable(True)
+
+还可以设置一个标志来确定如何处理插入。这些标志存储在QComboBox类本身上，并在下面列出：
+
+旗帜	行为
+QComboBox.NoInsert	无插入
+QComboBox.InsertAtTop	作为第一项插入
+QComboBox.InsertAtCurrent	替换当前选中的项目
+QComboBox.InsertAtBottom	在最后一项之后插入
+QComboBox.InsertAfterCurrent	在当前项目之后插入
+QComboBox.InsertBeforeCurrent	在当前项目之前插入
+QComboBox.InsertAlphabetically	按字母顺序插入
+要使用这些，请按如下方式应用标志：
+
+widget.setInsertPolicy(QComboBox.InsertAlphabetically)
+
+您还可以使用 限制框内允许的项目数量.setMaxCount，例如
+widget.setMaxCount(10)
+
+
+QListWidget
+接下来QListWidget。它与 非常相似QComboBox，主要区别在于可用的信号。
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        super(MainWindow, self).__init__()
+
+        self.setWindowTitle("My App")
+
+        widget = QListWidget()
+        widget.addItems(["One", "Two", "Three"])
+
+        # In QListWidget there are two separate signals for the item, and the str
+        widget.currentItemChanged.connect( self.index_changed )
+        widget.currentTextChanged.connect( self.text_changed )
+
+        self.setCentralWidget(widget)
+
+
+    def index_changed(self, i): # Not an index, i is a QListItem
+        print(i.text())
+
+    def text_changed(self, s): # s is a str
+        print(s)
+QListWidget提供currentItemChanged发送QListItem（列表框的元素）的currentTextChanged信号和发送文本的信号。
+
+
+QLine编辑
+小QLineEdit部件是一个简单的单行文本编辑框，用户可以在其中输入内容。这些用于表单字段或没有有效输入限制列表的设置。例如，输入电子邮件地址或计算机名称时
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        super(MainWindow, self).__init__()
+
+        self.setWindowTitle("My App")
+
+        widget = QLineEdit()
+        widget.setMaxLength(10)
+        widget.setPlaceholderText("Enter your text")
+
+        #widget.setReadOnly(True) # uncomment this to make readonly
+
+        widget.returnPressed.connect(self.return_pressed)
+        widget.selectionChanged.connect(self.selection_changed)
+        widget.textChanged.connect(self.text_changed)
+        widget.textEdited.connect(self.text_edited)
+
+        self.setCentralWidget(widget)
+
+
+    def return_pressed(self):
+        print("Return pressed!")
+        self.centralWidget().setText("BOOM!")
+
+    def selection_changed(self):
+        print("Selection changed")
+        print(self.centralWidget().selectedText())
+
+    def text_changed(self, s):
+        print("Text changed...")
+        print(s)
+
+    def text_edited(self, s):
+        print("Text edited...")
+        print(s)
+此外，可以使用输入掩码执行输入验证，以定义支持哪些字符以及在何处支持。这可以应用于如下领域：
+
+widget.setInputMask('000.000.000.000;_')
+
+
+到目前为止，我们已经成功地创建了一个窗口，并且我们已经向它添加了一个小部件。然而，我们通常希望在一个窗口中添加多个小部件，并对其结束位置进行一些控制。为了在 Qt 中做到这一点，我们使用layouts。Qt 中有 4 种基本布局可用，如下表所示。
+布局	行为
+QHBoxLayout	线性水平布局
+QVBoxLayout	线性垂直布局
+QGridLayout	在可转位网格 XxY
+QStackedLayout	彼此堆叠 (z)
+
+——————————————————————————————————————————————————————
+pyside6-uic mainwindow.ui -o MainWindow.py
+###############
+import sys
+from PySide6 import QtWidgets
+
+from MainWindow import Ui_MainWindow
+
+
+class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.setupUi(self)
+
+
+app = QtWidgets.QApplication(sys.argv)
+
+window = MainWindow()
+window.show()
+app.exec_()
