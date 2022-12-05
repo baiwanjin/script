@@ -1,0 +1,75 @@
+#SCADA环境
+#所在命名空间namespace=scada
+################################
+#scadamen.yaml 
+apiVersion: v1
+
+kind: LimitRange
+
+metadata:
+
+  name: scada-mem-min-max-demo-lr
+
+spec:
+
+  limits:
+
+  - max:
+
+      cpu: "16"
+      memory: "32Gi"
+
+    min:
+
+      cpu: "200m"
+      memory: "50Mi"
+
+    type: Container
+################################
+
+kubectl create namespace scada
+kubectl apply -f scadamen.yaml --namespace=scada
+
+##################################
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+
+  name: windcore
+
+  labels:
+
+    app: scada
+
+spec:
+
+  replicas: 3
+
+  selector:
+
+    matchLabels:
+
+      app: scada
+
+  template:
+
+    metadata:
+
+      labels:
+
+        app: scada
+
+    spec:
+
+      containers:
+
+      - name: nginx
+
+        image: nginx:1.14.2
+
+        ports:
+
+        - containerPort: 80
+#########################################
